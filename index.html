@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<head>
+    <title>Julie's Flower Catcher</title>
+    <style>
+    	* { 
+    		padding: 0; 
+    		margin: 0; 
+    	}
+
+    	canvas { 
+    		background: url('bg.png'); 
+    		display: block; 
+    		margin: 150px auto; 
+    	}
+    </style>
+</head>
+<body>
+
+<canvas id="game" width="800" height="500"></canvas>
+
+
+<script>
+	function Randint(min, max) {
+    	return Math.floor(Math.random() * (max - min + 1)) + min;
+	}
+
+	var canvas = document.getElementById("game");
+	var ctx = canvas.getContext("2d");
+
+	var start = 0;
+
+	var score = 0;
+	var lives = 5;
+	var timer = 0;
+
+	var x = canvas.width  / 2;
+	var y = canvas.height - 64;
+	var dx = 1;
+	var dy = 0;
+
+	var playerHeight = 64;
+	var playerWidth = 64;
+	var playerX = (canvas.width-playerWidth)/2;
+
+	var imagePlayer = new Image();
+	imagePlayer.src = 'player.png';
+	function drawPlayer() {
+		ctx.drawImage(imagePlayer, x, y);
+	}
+
+	var xMax = 5;
+	function updatePlayer() {
+		var xDiff = playerX - x;
+
+		if (xDiff > xMax) {
+			xDiff = xMax;
+			soundWhip.play();
+		} else if (xDiff < -xMax) {
+			xDiff = -xMax;
+			soundWhip.play();
+		}
+
+		x = x + xDiff;
+	}
+
+	var flowerMax = 50;
+	var flowers = new Array(flowerMax);
+	function flowerType() {
+		var t = Randint(1, 100);
+		if (t > 95) {
+			return 2;
+		} else if (t > 92) {
+			return 3;
+		} else if (t < Math.min((25 + (timer/250)), (90))) {
+			return 0;
+		}
+		return 1;
+	}
+
+	function flowerSpeed() {
+		var addSpeed = Math.round(timer/100);
+		var getSpeed = Randint(30 + addSpeed, 50 + addSpeed);
+		console.log(getSpeed);
+		return getSpeed;
+	}
+
+	var f = 0;
+	for (f = 0; f < flowerMax; f++) {
+		flowers[f] = new Object();
+		flowers[f].x = Randint(64, canvas.width-64);
+		flowers[f].y = -64;
+		flowers[f].speed = flowerSpeed();
+		flowers[f].type = flowerType();
+		flowers[f].delay = Randint(1, 2000);
+	}
+
+	var imageFlower = new Image();
+	var imageFlowerSpecial = new Image();
+	var imageFlowerSpeed = new Image();
+	var imageRock = new Image();
+	imageFlower.src = 'flower.png';
+	imageFlowerSpecial.src = 'flower_special.png';
+	imageFlowerSpeed.src = 'flower_speed.png';
+	imageRock.src = 'rock.png';
+	function drawFlower(fx, fy, type) {
+		if (type === 1) {
+			ctx.drawImage(imageFlower, fx, fy);
+		} else if (type === 2) {
+			ctx.drawImage(imageFlowerSpecial, fx, fy);
+		} else if (type === 3) {
+			ctx.drawImage(imageFlowerSpeed, fx, fy);
+		} else if (type === 0) {
+			ctx.drawImage(imageRock, fx, fy);
+		}
+	}
+	function drawFlowers() {
+		for (f = 0; f < flowerMax; f++) {
+			if (flowers[f].delay <= 0) {
+				drawFlower(flowers[f].x, flowers[f].y, flowers[f].type);
+			} else {
+				flowers[f].delay--;
+			}
+		}
+	}
+	function updateFlowers() {
+		for (f = 0; f < flowerMax; f++) {
+			if (detectCatch(flowers[f].x, flowers[f].y)) {
+				if (flowers[f].type === 1) {
+					score += 5;
+					soundGet.currentTime = 0;
+					soundGet.play();
+				} else if (flowers[f].type === 2) {
+					score += 100;
+					soundGetSpecial.currentTime = 0;
+					soundGetSpecial.play();
+				} else if (flowers[f].type === 3) {
+					score += 20;
+					xMax += 2;
+					soundGetSpeed.currentTime = 0;
+					soundGetSpeed.play();
+				} else if (flowers[f].type === 0) {
+					score -= 100;
+					lives--;
+					soundOof.currentTime = 0;
+					soundOof.play();
+					if (lives === 0) {
+						gameover = 1;
+					}
+					
+				}
+				
+				flowers[f] = new Object();
+				flowers[f].x = Randint(64, canvas.width-64);
+				flowers[f].y = -64;
+				flowers[f].speed = flowerSpeed();
+				flowers[f].type = flowerType();
+				flowers[f].delay = Randint(1, 2000);
+			}
+			if (flowers[f].delay <= 0) {
+				flowers[f].y += flowers[f].speed / 20;
+			} 
+			if (flowers[f].y >= canvas.height) {
+				flowers[f] = new Object();
+				flowers[f].x = Randint(64, canvas.width-64);
+				flowers[f].y = -64;
+				flowers[f].speed = flowerSpeed();
+				flowers[f].type = flowerType();
+				flowers[f].delay = Randint(1, 2000);
+			}
+		}
+	}
+
+	var gameover = 0;
+	function drawGameover() {
+		if (gameover === 1) {
+			for (f = 0; f < flowerMax; f++) {
+				flowers[f] = 0;
+			}
+		    ctx.font = "54px Arial";
+			ctx.fillStyle = "#000";
+			ctx.fillText("Game Over!", 250, 150);
+			ctx.font = "14px Arial";
+			ctx.fillText("Click anywhere to restart!", 320, 175);
+		} else {
+			timer++;
+		}
+	}
+
+
+	function detectCatch(fx, fy) {
+		 if(x > fx && x < fx+64 && y > fy && y < fy+64) {
+		 	console.log("Caught!");
+		 	return 1;
+		 }
+		 return 0;
+	}
+
+	function drawScore() {
+	    ctx.font = "14px Arial";
+	    ctx.fillStyle = "#000";
+	    ctx.fillText("Score: "+score, 20, 70);
+	}
+
+	function drawTimer() {
+	    ctx.font = "14px Arial";
+	    ctx.fillStyle = "#000";
+	    ctx.fillText("Timer: "+Math.round(timer/10), 20, 50);
+	    
+	}
+
+	function drawLives() {
+	    ctx.font = "14px Arial";
+	    ctx.fillStyle = "#f00";
+	    ctx.fillText("❤ ".repeat(lives), 20, 30);
+	}
+
+	function drawMenu() {
+	    ctx.font = "54px Arial";
+	    ctx.fillStyle = "#000";
+	    ctx.fillText("Julie's Flower Catcher ", 140, 150);
+	    ctx.font = "14px Arial";
+	    ctx.fillText("Click anywhere to start!", 320, 175);
+
+	    ctx.fillText("Collect white flowers for 5 points!", 295, 225);
+	    ctx.fillText("Collect yellow flowers for 100 points!", 285, 245);
+	    ctx.fillText("Collect red flowers for 20 points, and you'll increase speed!", 220, 265);
+	    ctx.fillText("Watch out for rocks, you'll lose a life!", 290, 285);
+	    ctx.fillText("for Julie, from James :o)", 20, 30);
+	    ctx.fillText("Happy Valentines Day!", 20, 50);
+	}
+
+	soundBG = new Audio('gamebg.mp3'); 
+	soundBG.volume = 0.4;
+	soundBG.addEventListener('ended', function() {
+		this.currentTime = 0;
+		this.play();
+	}, false);
+	
+	var soundWhip = new Audio("whip.wav"); 
+	var soundGet = new Audio("get.wav"); 
+	var soundGetSpeed = new Audio("getSpeed.wav"); 
+	soundGetSpeed.volume = 0.4;
+	var soundGetSpecial = new Audio("getSpecial.wav"); 
+	soundGetSpecial.volume = 0.8;
+	var soundOof = new Audio("oof.mp3"); 
+
+	function draw() {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		if (start === 1) {
+	    	drawPlayer();
+	    	updatePlayer();
+	    	drawFlowers();
+	    	updateFlowers();
+	    	drawScore();
+	    	drawTimer();
+	    	drawLives();
+	    	drawGameover();
+
+		} else {
+			drawMenu();
+			drawPlayer();
+		}
+	}
+	
+	document.addEventListener("mousemove", mouseMoveHandler, false);
+	function mouseMoveHandler(e) {
+		var relativeX = e.clientX - canvas.offsetLeft;
+		if(relativeX > 0 && relativeX < canvas.width) {
+				playerX = relativeX - playerWidth/2;
+		}
+	}
+
+	document.addEventListener("click", clickHandler, false);
+	function clickHandler(e) {
+		start = 1;
+		if (gameover = 1) {
+			score = 0;
+			timer = 0;
+			speed = 5;
+			lives = 5;
+			gameover = 0;
+			for (f = 0; f < flowerMax; f++) {
+				flowers[f] = new Object();
+				flowers[f].x = Randint(64, canvas.width-64);
+				flowers[f].y = -64;
+				flowers[f].speed = flowerSpeed();
+				flowers[f].type = flowerType();
+				flowers[f].delay = Randint(1, 2000);
+			}
+		}
+	}
+
+	soundBG.play();
+	setInterval(draw, 10);
+
+
+</script>
+
+</body>
